@@ -1,0 +1,36 @@
+{
+  "name": "remittance",
+  "version": "1.0.0",
+  "description": "ETH Community Blockstars 2.0's Project 2 - Remittance",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "truffle-assertions": "^0.9.1",
+    "jquery": "3.4.1",
+    "truffle-contract": "4.0.23",
+    "web3": "^1.0.0-beta.55"
+  },
+  "devDependencies": {
+    "chai": "4.2.0",
+    "chai-as-promised": "7.1.1",
+    "file-loader": "^4.0.0",
+    "truffle": "^5.0.8",
+    "webpack": "^4.38.0",
+    "webpack-cli": "^3.3.6"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remedcu/Remittance.git"
+  },
+  "author": "Shebin John",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/remedcu/Remittance/issues"
+  },
+  "homepage": "https://github.com/remedcu/Remittance#readme"
+}
