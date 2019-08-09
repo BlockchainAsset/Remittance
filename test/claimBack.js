@@ -6,23 +6,14 @@ const truffleAssert = require('truffle-assertions');
 
 const amount = new BN(web3.utils.toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
-const one = new BN('1');
-const two = new BN('2');
-const five = new BN('5');
-const ten = new BN('10');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const shortTime = 1 // Just a second
-const amountByTwo = amount.div(two);
-const amountByTen = amount.div(ten);
 const twoEtherInWei = new BN(web3.utils.toWei("2"));
 const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = web3.utils.fromAscii("bobSecret");
 const carolSecretBytes = web3.utils.fromAscii("carolSecret");
 const fakeSecretBytes = web3.utils.fromAscii("secret");
-const bobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,carolSecretBytes]))
-const fakeBobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[fakeSecretBytes,carolSecretBytes]))
-const bobFakeCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,fakeSecretBytes]))
 
 function wait(second){
   var start = new Date().getTime();
@@ -36,9 +27,10 @@ contract('Remittance', (accounts) => {
 
   var remittanceInstance;
   var owner, alice, bob, carol;
+  var bobCarolSecret;
 
   before("Preparing Accounts and Initial Checks", async function() {
-    assert.isAtLeast(accounts.length, 3, "Atleast three accounts required");
+    assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
 
     // Setup 4 accounts.
     [owner, alice, bob, carol] = accounts;
@@ -53,6 +45,9 @@ contract('Remittance', (accounts) => {
 
   beforeEach(async function() {
     remittanceInstance = await remittance.new({ from: owner});
+
+    // Get the hashValue first
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
   it('Should claim back the amount correctly', async () => {
@@ -80,12 +75,31 @@ contract('Remittance', (accounts) => {
 
   });
 
+  it('Should only allow to claim back if the deadline is passed', async () => {
+    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
+    await truffleAssert.fails(
+      remittanceInstance.claimBack(bob, bobSecretBytes, carolSecretBytes, {from: alice}),
+      null,
+      'Claim Period has not started yet'
+    );
+  });
+
+  it('Should only allow to claim back if the exchange is not done yet', async () => {
+    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
+    await remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: carol});
+    await truffleAssert.fails(
+      remittanceInstance.claimBack(bob, bobSecretBytes, carolSecretBytes, {from: alice}),
+      null,
+      'Exchange is already complete'
+    );
+  });
+
   it('Should only allow Alice to claim back from Bob through secret keys', async () => {
     await remittanceInstance.remit(bobCarolSecret, bob, carol, shortTime, {from: alice, value: amount});
     await truffleAssert.fails(
       remittanceInstance.claimBack(bob, bobSecretBytes, carolSecretBytes, {from: owner}),
       null,
-      'Only Alice can claim back.'
+      'Only Remit Creator can claim back'
     );
   });
 
@@ -94,7 +108,8 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.claimBack(bob, fakeSecretBytes, carolSecretBytes, {from: alice}),
       null,
-      'Password is incorrect.'
+      // This is because as the hashValue is new, the Remit Creator address is checked initially which is set to default value 0x0
+      'Only Remit Creator can claim back'
     );
   });
 
@@ -103,7 +118,8 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.claimBack(bob, bobSecretBytes, fakeSecretBytes, {from: alice}),
       null,
-      'Password is incorrect.'
+      // This is because as the hashValue is new, the Remit Creator address is checked initially which is set to default value 0x0
+      'Only Remit Creator can claim back'
     );
   });
 
@@ -120,7 +136,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.claimBack(zeroAdd, bobSecretBytes, carolSecretBytes, {from: alice}),
       null,
-      'Bob should be a valid address'
+      'User address should be a valid address'
     );
   });
 
@@ -152,7 +168,7 @@ contract('Remittance', (accounts) => {
     assert.strictEqual(claimBackReceipt.logs.length, 1);
     assert.strictEqual(log.event, "ClaimBack");
     assert.strictEqual(log.address, remittanceAddress);
-    assert.strictEqual(log.args.to, alice);
+    assert.strictEqual(log.args.remitCreator, alice);
     assert.isTrue(log.args.value.eq(hundred));
   });
 

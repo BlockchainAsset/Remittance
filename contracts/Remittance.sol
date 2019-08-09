@@ -6,34 +6,42 @@ import "./SafeMath.sol";
 contract Remittance is Stoppable{
     using SafeMath for uint;
 
-    struct Client {
-        bytes32 secret; // For the password
-        uint256 balances; // For storing bob's balance
+    struct RemitDetails {
+        uint256 amount; // For storing the amount of Remit
         bool finished; // To check if the transaction is complete
+        address user; // To store the user address
         address exchange; // To store the particular exchange address
-        address alice; // To store the remit initiator's address
-        uint256 tillWhen; // To store till when this exchange is allowed
+        address remitCreator; // To store the remit initiator's address
+        uint256 deadline; // To store till when this exchange is allowed
     }
 
-    uint256 public ownerFees; // To store the owner collected fees
+    uint256 public fee = 100; // Fee for each remittance valued more than 10K wei
 
-    mapping (address => Client) public bobDetails;
-    mapping (address => uint256) public carolDetails; // To store the balance of the exchange owner
+    mapping (address => uint256) public ownerFees; // To store the owner collected fees
+    mapping (bytes32 => RemitDetails) public remittances;
+    mapping (address => uint256) public exchanger; // To store the balance of the exchange owner
 
-    event Remit(address indexed bob, address indexed carol, uint256 value);
+    event Remit(address indexed user, address indexed exchanger, uint256 value);
     event OwnerCut(address indexed owner, uint256 value);
-    event Transfered(address indexed to, uint256 value);
-    event Exchange(address indexed from, address indexed to, uint256 value);
-    event ClaimBack(address indexed to, uint256 value);
+    event Transfered(address indexed exchanger, uint256 value);
+    event Exchange(address indexed user, address indexed exchanger, uint256 value);
+    event ClaimBack(address indexed remitCreator, uint256 value);
 
     constructor(bool initialRunState) public Stoppable(initialRunState){
     }
 
-    function remit(bytes32 hashValue, address bobAddress, address carolAddress, uint256 till) public onlyIfRunning payable returns(bool status){
+    function encrypt(bytes32 userSecret, bytes32 exchangerSecret) public pure returns(bytes32 password){
+        return keccak256(abi.encodePacked(userSecret, exchangerSecret));
+    }
+
+    function remit(bytes32 hashValue, address userAddress, address exchangerAddress, uint256 deadline) public onlyIfRunning payable returns(bool status){
 
         // Address should be valid
-        require(bobAddress != address(0), "Bob should be a valid address");
-        require(carolAddress != address(0), "Carol should be a valid address");
+        require(userAddress != address(0), "User address should be a valid address");
+        require(exchangerAddress != address(0), "Exchanger address should be a valid address");
+
+        // The hashValue should be unique
+        require(remittances[hashValue].user == address(0), "The hashValue should be unique");
 
         // To decrease the gas used
         uint msgValue = msg.value;
@@ -43,56 +51,51 @@ contract Remittance is Stoppable{
 
         // Owner taking his cut only if the transfer is more than 10,000 wei
         if (msg.value > 10000){
-            ownerFees = ownerFees.add(100);
-            msgValue = msgValue.sub(100);
+            ownerFees[getOwner()] = ownerFees[getOwner()].add(fee);
+            msgValue = msgValue.sub(fee);
         }
 
         // Details of Bob is updated
-        bobDetails[bobAddress].secret = hashValue;
-        bobDetails[bobAddress].balances = msgValue;
-        bobDetails[bobAddress].exchange = carolAddress;
-        bobDetails[bobAddress].tillWhen = now.add(till);
-        bobDetails[bobAddress].alice = msg.sender;
+        remittances[hashValue].amount = msgValue;
+        remittances[hashValue].user = userAddress;
+        remittances[hashValue].exchange = exchangerAddress;
+        remittances[hashValue].remitCreator = msg.sender;
+        remittances[hashValue].deadline = now.add(deadline);
 
-        emit Remit(bobAddress, carolAddress, msgValue);
+        emit Remit(userAddress, exchangerAddress, msgValue);
 
         return true;
 
     }
 
-    function getBalanceOf(address check) public view returns(uint amount){
-
-        return bobDetails[check].balances;
-
-    }
-
-    function exchange(address bobAddress, bytes32 bobSecret, bytes32 carolSecret) public onlyIfRunning returns(bool status){
+    function exchange(address userAddress, bytes32 userSecret, bytes32 exchangerSecret) public onlyIfRunning returns(bool status){
 
         // Address should be valid
-        require(bobAddress != address(0), "Bob should be a valid address");
+        require(userAddress != address(0), "User address should be a valid address");
 
-        // As bob does not want to do anything with Ether, I am making Carol do the transfer
-        // And only carol should be allowed to do this transfer
-        require(bobDetails[bobAddress].exchange == msg.sender, "Only that particular exchange can do this");
+        bytes32 secret = encrypt(userSecret, exchangerSecret);
 
-        // To check the password
-        bytes32 secret = keccak256(abi.encodePacked(bobSecret, carolSecret));
-        require(secret == bobDetails[bobAddress].secret, "Password is incorrect.");
+        // As User does not want to do anything with Ether, I am making Exchanger to do the transfer
+        // And only Exchanger should be allowed to do this transfer
+        require(remittances[secret].exchange == msg.sender, "Only that particular exchange can do this");
 
-        uint bobBalance = bobDetails[bobAddress].balances;
-        uint carolBalance = carolDetails[msg.sender];
+        // This is just an extra precaution because we are using a hashValue as the mapping
+        require(remittances[secret].user == userAddress, "Only that particular Users exchange should be done by the Exchanger");
 
-        // This is to check whether the deadline is passed and Alice has taken the exchange amount back
-        // Carol can also check getBalanceOf for this purpose
-        require(bobBalance > 0, "Nothing to Withdraw");
+        uint userBalance = remittances[secret].amount;
+        uint exchangerBalance = exchanger[msg.sender];
 
-        // As Bob receives fiat from Carol, Bob's balance is changed to zero
-        // And Carol's balance is updated. Here we have updated considering that carol can be doing multiple exchanges as well
-        bobDetails[bobAddress].balances = 0;
-        carolDetails[msg.sender] = carolBalance.add(bobBalance);
-        bobDetails[bobAddress].finished = true;
+        // This is to check whether the deadline is passed and Remit Creator has taken the exchange amount back
+        // Exchanger can also check getBalanceOf for this purpose
+        require(userBalance > 0, "Nothing to Withdraw");
 
-        emit Exchange(bobAddress, msg.sender, bobBalance);
+        // As User receives fiat from Exchanger, User's balance is changed to zero
+        // And Exchanger's balance is updated. Here we have updated considering that carol can be doing multiple exchanges as well
+        remittances[secret].amount = 0;
+        exchanger[msg.sender] = exchangerBalance.add(userBalance);
+        remittances[secret].finished = true;
+
+        emit Exchange(userAddress, msg.sender, userBalance);
         return true;
 
     }
@@ -101,10 +104,10 @@ contract Remittance is Stoppable{
 
         require(amount > 0, "Zero cant be withdrawn");
 
-        uint balance = carolDetails[msg.sender];
+        uint balance = exchanger[msg.sender];
         require(balance >= amount, "Withdraw amount requested higher than balance");
 
-        carolDetails[msg.sender] = balance.sub(amount);
+        exchanger[msg.sender] = balance.sub(amount);
 
         emit Transfered(msg.sender, amount);
 
@@ -113,33 +116,26 @@ contract Remittance is Stoppable{
 
     }
 
-    function transferComplete(address check) public view returns(bool status){
-
-        return bobDetails[check].finished;
-
-    }
-
-    function claimBack(address bobAddress, bytes32 bobSecret, bytes32 carolSecret) public onlyIfRunning returns(bool status){
+    function claimBack(address userAddress, bytes32 userSecret, bytes32 exchangerSecret) public onlyIfRunning returns(bool status){
 
         // Address should be valid
-        require(bobAddress != address(0), "Bob should be a valid address");
+        require(userAddress != address(0), "User address should be a valid address");
 
-        // To check the password
-        bytes32 secret = keccak256(abi.encodePacked(bobSecret, carolSecret));
-        require(secret == bobDetails[bobAddress].secret, "Password is incorrect.");
+        bytes32 secret = encrypt(userSecret, exchangerSecret);
 
-        // Only the remit creator should be allowed to claim back
-        require(bobDetails[bobAddress].alice == msg.sender, "Only Alice can claim back");
+        // Only the Remit Creator should be allowed to claim back
+        require(remittances[secret].remitCreator == msg.sender, "Only Remit Creator can claim back");
 
         // This is to stop further checks if the exchange is already complete
-        require(bobDetails[bobAddress].finished == false, "Exchange is already complete");
+        require(remittances[secret].finished == false, "Exchange is already complete");
 
         // The claim period should start
-        require(bobDetails[bobAddress].tillWhen < now, "Claim Period has not started yet");
+        require(remittances[secret].deadline < now, "Claim Period has not started yet");
 
-        uint256 amount = bobDetails[bobAddress].balances;
-        bobDetails[bobAddress].balances = 0;
+        uint256 amount = remittances[secret].amount;
         require(amount > 0, "Zero can't be withdrawn");
+
+        remittances[secret].amount = 0;
 
         emit ClaimBack(msg.sender, amount);
 
@@ -152,9 +148,9 @@ contract Remittance is Stoppable{
 
         require(amount > 0, "Zero cant be withdrawn");
 
-        require(ownerFees >= amount, "Withdraw amount requested higher than balance");
+        require(ownerFees[msg.sender] >= amount, "Withdraw amount requested higher than balance");
 
-        ownerFees = ownerFees.sub(amount);
+        ownerFees[msg.sender] = ownerFees[msg.sender].sub(amount);
 
         emit OwnerCut(msg.sender, amount);
 

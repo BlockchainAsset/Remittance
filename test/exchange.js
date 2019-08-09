@@ -6,31 +6,23 @@ const truffleAssert = require('truffle-assertions');
 
 const amount = new BN(web3.utils.toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
-const one = new BN('1');
-const two = new BN('2');
-const five = new BN('5');
-const ten = new BN('10');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const shortTime = 1 // Just a second
-const amountByTwo = amount.div(two);
-const amountByTen = amount.div(ten);
 const twoEtherInWei = new BN(web3.utils.toWei("2"));
 const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = web3.utils.fromAscii("bobSecret");
 const carolSecretBytes = web3.utils.fromAscii("carolSecret");
 const fakeSecretBytes = web3.utils.fromAscii("secret");
-const bobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,carolSecretBytes]))
-const fakeBobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[fakeSecretBytes,carolSecretBytes]))
-const bobFakeCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,fakeSecretBytes]))
 
 contract('Remittance', (accounts) => {
 
   var remittanceInstance;
   var owner, alice, bob, carol;
+  var bobCarolSecret;
 
   before("Preparing Accounts and Initial Checks", async function() {
-    assert.isAtLeast(accounts.length, 3, "Atleast three accounts required");
+    assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
 
     // Setup 4 accounts.
     [owner, alice, bob, carol] = accounts;
@@ -45,6 +37,9 @@ contract('Remittance', (accounts) => {
 
   beforeEach(async function() {
     remittanceInstance = await remittance.new({ from: owner});
+
+    // Get the hashValue first
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
   it('Should exchange the amount correctly', async () => {
@@ -52,20 +47,20 @@ contract('Remittance', (accounts) => {
     await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
 
     // Get initial balance of Carol in the contract before the transaction is made.
-    let carolContractStartingBalance = new BN(await remittanceInstance.carolDetails(carol));
+    let carolContractStartingBalance = new BN(await remittanceInstance.exchanger(carol));
 
     // Exchange amount from Bob to Carol
     await remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: carol});
 
     // Get the final balance of Carol in the contract after the transaction is made.
-    let carolContractEndingBalance = new BN(await remittanceInstance.carolDetails(carol));
+    let carolContractEndingBalance = new BN(await remittanceInstance.exchanger(carol));
 
     // Check if the result is correct or not
     assert.isTrue(carolContractEndingBalance.eq(amount.add(carolContractStartingBalance).sub(hundred)), "Amount wasn't correctly received by Carol");
 
   });
 
-  it('Should only allow Carol to exchange for Bob', async () => {
+  it('Should only allow Carol to exchange for Bob 1', async () => {
     await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
     await truffleAssert.fails(
       remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: owner}),
@@ -74,12 +69,22 @@ contract('Remittance', (accounts) => {
     );
   });
 
+  it('Should only allow Carol to exchange for Bob 2', async () => {
+    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
+    await truffleAssert.fails(
+      remittanceInstance.exchange(alice, bobSecretBytes, carolSecretBytes, {from: carol}),
+      null,
+      'Only that particular Users exchange should be done by the Exchanger'
+    );
+  });
+
   it('Should only allow if Secret of Bob is Correct', async () => {
     await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
     await truffleAssert.fails(
       remittanceInstance.exchange(bob, fakeSecretBytes, carolSecretBytes, {from: carol}),
       null,
-      'Password is incorrect.'
+      // This is because as the hashValue is new, the exchange address is checked initially which is set to default value 0x0
+      'Only that particular exchange can do this'
     );
   });
 
@@ -88,7 +93,8 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.exchange(bob, bobSecretBytes, fakeSecretBytes, {from: carol}),
       null,
-      'Password is incorrect.'
+      // This is because as the hashValue is new, the exchange address is checked initially which is set to default value 0x0
+      'Only that particular exchange can do this'
     );
   });
 
@@ -115,7 +121,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.exchange(zeroAdd, bobSecretBytes, carolSecretBytes, {from: carol}),
       null,
-      'Bob should be a valid address'
+      'User address should be a valid address'
     );
   });
 
@@ -146,8 +152,8 @@ contract('Remittance', (accounts) => {
     assert.strictEqual(exchangeReceipt.logs.length, 1);
     assert.strictEqual(log.event, "Exchange");
     assert.strictEqual(log.address, remittanceAddress);
-    assert.strictEqual(log.args.from, bob);
-    assert.strictEqual(log.args.to, carol);
+    assert.strictEqual(log.args.user, bob);
+    assert.strictEqual(log.args.exchanger, carol);
     assert.isTrue(log.args.value.eq(hundred));
   });
 

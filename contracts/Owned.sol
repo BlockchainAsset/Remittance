@@ -1,7 +1,7 @@
 pragma solidity >=0.4.22 <0.6.0;
 
 contract Owned {
-    address payable public owner;
+    address payable private owner;
 
     event LogOwnerChanged(address indexed newOwner);
 
@@ -18,5 +18,9 @@ contract Owned {
         require(newOwner != address(0), "newOwner should be a valid address");
         emit LogOwnerChanged(newOwner);
         owner = newOwner;
+    }
+
+    function getOwner() public view returns(address ownerAddress){
+        return owner;
     }
 }

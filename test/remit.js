@@ -6,31 +6,23 @@ const truffleAssert = require('truffle-assertions');
 
 const amount = new BN(web3.utils.toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
-const one = new BN('1');
-const two = new BN('2');
-const five = new BN('5');
-const ten = new BN('10');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const shortTime = 1 // Just a second
-const amountByTwo = amount.div(two);
-const amountByTen = amount.div(ten);
 const twoEtherInWei = new BN(web3.utils.toWei("2"));
 const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = web3.utils.fromAscii("bobSecret");
 const carolSecretBytes = web3.utils.fromAscii("carolSecret");
 const fakeSecretBytes = web3.utils.fromAscii("secret");
-const bobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,carolSecretBytes]))
-const fakeBobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[fakeSecretBytes,carolSecretBytes]))
-const bobFakeCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,fakeSecretBytes]))
 
 contract('Remittance', (accounts) => {
 
   var remittanceInstance;
   var owner, alice, bob, carol;
+  var bobCarolSecret;
 
   before("Preparing Accounts and Initial Checks", async function() {
-    assert.isAtLeast(accounts.length, 3, "Atleast three accounts required");
+    assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
 
     // Setup 4 accounts.
     [owner, alice, bob, carol] = accounts;
@@ -45,25 +37,36 @@ contract('Remittance', (accounts) => {
 
   beforeEach(async function() {
     remittanceInstance = await remittance.new({ from: owner});
+
+    // Get the hashValue first
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
   it('Should remit the coin correctly', async () => {
     // Make transaction from Alice to remit function.
     await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
 
-    // Get Balance of Carol After Transfer
-    let bobContractEndingBalance = await remittanceInstance.getBalanceOf(bob);
+    // Get Balance of Bob After Transfer
+    let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
 
     // Check if the result is correct or not
     assert.isTrue(bobContractEndingBalance.eq(amount.sub(hundred)), "Amount wasn't correctly received by Bob");
   });
 
-  it('Owner should not take a cut if transferred value is less than 10K Wei', async () => {
-    // Make transaction from Alice to remit function.
-    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: hundred});
+  it('Remit should not be allowed with the same hashValue as any previous Remit', async () => {
+    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
+    await truffleAssert.fails(
+      remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount}),
+      null,
+      'The hashValue should be unique'
+    );
 
-    // Get Balance of Carol After Transfer
-    let bobContractEndingBalance = await remittanceInstance.getBalanceOf(bob);
+  });
+
+  it('Owner should not take a cut if transferred value is less than 10K Wei', async () => {
+    
+    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: hundred});
+    let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
 
     // Check if the result is correct or not
     assert.isTrue(bobContractEndingBalance.eq(hundred), "Amount wasn't correctly received by Bob");
@@ -97,7 +100,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.remit(bobCarolSecret, zeroAdd, carol, time, {from: alice, value: amount}),
       null,
-      'Bob should be a valid address'
+      'User address should be a valid address'
     );
   });
 
@@ -105,7 +108,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.remit(bobCarolSecret, bob, zeroAdd, time, {from: alice, value: amount}),
       null,
-      'Carol should be a valid address'
+      'Exchanger address should be a valid address'
     );
   });
 
@@ -115,8 +118,8 @@ contract('Remittance', (accounts) => {
 
     assert.strictEqual(receipt.logs.length, 1);
     assert.strictEqual(log.event, "Remit");
-    assert.strictEqual(log.args.bob, bob);
-    assert.strictEqual(log.args.carol, carol);
+    assert.strictEqual(log.args.user, bob);
+    assert.strictEqual(log.args.exchanger, carol);
     assert.isTrue(log.args.value.eq(amount.sub(hundred)));
   });
 

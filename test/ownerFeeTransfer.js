@@ -6,31 +6,23 @@ const truffleAssert = require('truffle-assertions');
 
 const amount = new BN(web3.utils.toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
-const one = new BN('1');
-const two = new BN('2');
-const five = new BN('5');
-const ten = new BN('10');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const shortTime = 1 // Just a second
-const amountByTwo = amount.div(two);
-const amountByTen = amount.div(ten);
 const twoEtherInWei = new BN(web3.utils.toWei("2"));
 const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = web3.utils.fromAscii("bobSecret");
 const carolSecretBytes = web3.utils.fromAscii("carolSecret");
 const fakeSecretBytes = web3.utils.fromAscii("secret");
-const bobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,carolSecretBytes]))
-const fakeBobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[fakeSecretBytes,carolSecretBytes]))
-const bobFakeCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,fakeSecretBytes]))
 
 contract('Remittance', (accounts) => {
 
   var remittanceInstance;
   var owner, alice, bob, carol;
+  var bobCarolSecret;
 
   before("Preparing Accounts and Initial Checks", async function() {
-    assert.isAtLeast(accounts.length, 3, "Atleast three accounts required");
+    assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
 
     // Setup 4 accounts.
     [owner, alice, bob, carol] = accounts;
@@ -45,6 +37,9 @@ contract('Remittance', (accounts) => {
 
   beforeEach(async function() {
     remittanceInstance = await remittance.new({ from: owner});
+
+    // Get the hashValue first
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
   it('Should withdraw the amount correctly for owner', async () => {
