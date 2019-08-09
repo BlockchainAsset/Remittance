@@ -1,25 +1,25 @@
-const BN = web3.utils.BN;
+const { BN, fromAscii, toWei } = web3.utils;
 
 const remittance = artifacts.require("Remittance");
 
 const truffleAssert = require('truffle-assertions');
 
-const amount = new BN(web3.utils.toWei('1')); // <-- Change ETH value to be tested here
+const amount = new BN(toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const shortTime = 1 // Just a second
-const twoEtherInWei = new BN(web3.utils.toWei("2"));
+const twoEtherInWei = new BN(toWei("2"));
 const zeroAdd = "0x0000000000000000000000000000000000000000";
-const bobSecretBytes = web3.utils.fromAscii("bobSecret");
-const carolSecretBytes = web3.utils.fromAscii("carolSecret");
-const fakeSecretBytes = web3.utils.fromAscii("secret");
+const bobSecretBytes = fromAscii("bobSecret");
+const carolSecretBytes = fromAscii("carolSecret");
+const fakeSecretBytes = fromAscii("secret");
 
 contract('Remittance', (accounts) => {
 
-  var remittanceInstance;
-  var owner, alice, bob, carol;
-  var bobCarolSecret;
+  let remittanceInstance;
+  let owner, alice, bob, carol;
+  let bobCarolSecret;
 
   before("Preparing Accounts and Initial Checks", async function() {
     assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
@@ -44,10 +44,10 @@ contract('Remittance', (accounts) => {
 
   it('Should withdraw the amount correctly', async () => {
     // Make transaction from alice account to remit function.
-    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: amount});
+    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
 
     // Exchange amount from bob to carol
-    await remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: carol});
+    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
 
     // Get initial balance of the account before the transaction is made.
     let carolStartingBalance = new BN(await web3.eth.getBalance(carol));
@@ -75,8 +75,8 @@ contract('Remittance', (accounts) => {
   })
 
   it('Should only work if balance > amount', async () => {
-    await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: hundred});
-    await remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: carol});
+    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
     await remittanceInstance.withdraw(hundred, {from: carol}),
     await truffleAssert.fails(
       remittanceInstance.withdraw(hundred, {from: carol}),
@@ -86,16 +86,16 @@ contract('Remittance', (accounts) => {
   })
 
   it("Should correctly emit the proper event: Transfered", async () => {
-    const remitReceipt = await remittanceInstance.remit(bobCarolSecret, bob, carol, time, {from: alice, value: hundred});
-    await remittanceInstance.exchange(bob, bobSecretBytes, carolSecretBytes, {from: carol});
+    const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
     const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
     const log = withdrawReceipt.logs[0];
     const remittanceAddress = remitReceipt.logs[0].address;
 
     assert.strictEqual(withdrawReceipt.logs.length, 1);
-    assert.strictEqual(log.event, "Transfered");
+    assert.strictEqual(log.event, "Withdrawed");
     assert.strictEqual(log.address, remittanceAddress);
-    assert.strictEqual(log.args.exchanger, carol);
+    assert.strictEqual(log.args.to, carol);
     assert.isTrue(log.args.value.eq(hundred));
   });
 
