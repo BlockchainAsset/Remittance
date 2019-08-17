@@ -95,7 +95,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol}),
       null,
-      'Remit Creator already claimed back'
+      'Remittance Completed/Claimed Back'
     );
   });
 

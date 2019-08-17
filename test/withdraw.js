@@ -81,7 +81,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
       remittanceInstance.withdraw(hundred, {from: carol}),
       null,
-      'Withdraw amount requested higher than balance'
+      'SafeMath: subtraction overflow.'
     );
   })
 

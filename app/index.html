@@ -1,15 +1,93 @@
 <!doctype html>
-<html lang="en" dir="ltr">
-<head>
-<title>Remittance</title>
-<meta charset="utf-8">
-
-</head>
-<body>
-<center>
-
-</center>
-<script src="js/app.js"></script>
-
-</body>
-</html>
+<html>
+    <head>
+    	<meta charset="UTF-8">
+        <title>Remittance</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+    <div class="container container-login100">
+        <center>
+        <div class="row">
+            <div class="col-sm-6">
+                <h1>Balances in Wallet</h1>
+                <div>Contract Owner:<br><span id="oWBalance">(Loading...)</span> Ether</div><br>
+                <div>Remit Creator:<br><span id="rWBalance">(Loading...)</span> Ether</div><br>
+                <div>Exchanger have:<br><span id="eWBalance">(Loading...)</span> Ether</div><br>
+            </div>
+            <div class="col-sm-6">
+                <h1>Balances in Contract</h1>
+                <div>Contract Owner: <span id="oCBalance">(Loading...)</span> Ether</div><br>
+                <div>Exchanger have: <span id="eCBalance">(Loading...)</span> Ether</div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-6">
+                <h1>Remit</h1>
+                <div>
+                    <table>
+                        <tbody>
+                            <tr><td>Amount:</td><td><input name="amount" type="number" placeholder="Enter the amount in Ether" /></td></tr>
+                            <tr><td>User Password:</td><td><input name="userPassword" type="text" placeholder="Enter password of User A" /></td></tr>
+                            <tr><td>Exchanger Password:</td><td><input name="exchangerPassword" type="text" placeholder="Enter Password of User B" /></td></tr>
+                            <tr><td>Exchanger Address:</td><td><input name="exchangerAddress" type="text" placeholder="Enter the Exchanger Address" /></td></tr>
+                            <tr><td>Valid Till (in Seconds):</td><td><input name="seconds" type="number" placeholder="3600 Seconds = 1 Hour" /></td></tr>
+                            <tr><td></td><td><button id="remit">Remit</button></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <b><p><div id="remitHashValue"></div></p></b>
+                <b><p><div id="remitStatus"></div></p></b>
+            </div>
+            <div class="col-sm-6">
+                <h1>Exchange</h1>
+                <div>
+                    <table>
+                        <tbody>
+                            <tr><td>User Password:</td><td><input name="userPassword" type="text" placeholder="Enter password of User A" /></td></tr>
+                            <tr><td>Exchanger Password:</td><td><input name="exchangerPassword" type="text" placeholder="Enter Password of User B" /></td></tr>
+                            <tr><td></td><td><button id="exchange">Exchange</button></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <b><p><div id="exchangeStatus"></div></p></b>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-6">
+                <h1>Withdraw</h1>
+                <div>
+                    <table>
+                        <tbody>
+                            <tr><td>Amount:</td><td><input name="wAmount" type="number" placeholder="0 Ether" /></td></tr>
+                            <tr><td>Who:</td><td><select name="wPerson">
+                                        <option value="1">Owner</option>
+                                        <option value="2">Exchanger</option>
+                                    </select></td></tr>
+                            <tr><td></td><td><button id="withdraw">Withdraw</button></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <b><p><div id="withdrawStatus"></div></p></b>
+            </div>
+            <div class="col-sm-6">
+                <h1>ClaimBack</h1>
+                <div>
+                    <table>
+                        <tbody>
+                            <tr><td>Hash Password:</td><td><input name="hashValue" type="text" placeholder="Enter hash value received at the time of remit creation." /></td></tr>
+                            <tr><td></td><td><button id="claimBack">Claim Back</button></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <b><p><div id="claimBackStatus"></div></p></b>
+            </div>
+        </div>
+        </center>
+    </div>
+    <script src="js/app.js"></script>
+    </body>
+<html>

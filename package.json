@@ -10,7 +10,10 @@
     "jquery": "3.4.1",
     "truffle-assertions": "^0.9.1",
     "truffle-contract": "4.0.23",
-    "web3": "^1.0.0-beta.55"
+    "web3": "^1.0.0-beta.55",
+    "ganache-cli": "^6.5.1",
+    "http-server": "^0.11.1",
+    "husky": "^3.0.3"
   },
   "devDependencies": {
     "chai": "4.2.0",
@@ -21,12 +24,20 @@
     "webpack-cli": "^3.3.6"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "bash startGanache.sh && ./node_modules/.bin/truffle migrate --reset && ./node_modules/.bin/webpack-cli --mode development && http-server ./build/app -a 0.0.0.0 -c-1",
+    "build": "truffle compile && bash startGanache.sh &&  webpack-cli --mode development",
+    "test": "bash startGanache.sh && truffle test && bash stopGanache.sh"
   },
+  "precommit": "truffle compile",
+  "testChain": "bash startGanache.sh && truffle test && bash stopGanache.sh",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/remedcu/Remittance.git"
   },
+  "keywords": [
+    "Blockchain",
+    "FinTech"
+  ],
   "author": "Shebin John",
   "license": "ISC",
   "bugs": {

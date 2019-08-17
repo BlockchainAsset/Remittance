@@ -13,6 +13,7 @@ contract Remittance is Stoppable{
         uint256 deadline; // To store in seconds from the current time for the claim back to start
     }
 
+    uint256 public feeThreshold = 10000; // Fee would be taken once the remittance is valued more than 10K wei
     uint256 public fee = 100; // Fee for each remittance valued more than 10K wei
 
     mapping (address => uint256) public balances; // To store the contract owner & exchange owner balance
@@ -45,7 +46,7 @@ contract Remittance is Stoppable{
         require(msgValue > 0, "Amount should be atleast 1 wei");
 
         // Owner taking his cut only if the transfer is more than 10,000 wei
-        if (msg.value > 10000){
+        if (msg.value > feeThreshold){
             address ownerAddress = getOwner();
             balances[ownerAddress] = balances[ownerAddress].add(fee);
             msgValue = msgValue.sub(fee);
@@ -72,15 +73,14 @@ contract Remittance is Stoppable{
         require(remittances[hashValue].exchange == msg.sender, "Only that particular exchange can do this");
 
         uint userBalance = remittances[hashValue].amount;
-        uint exchangerBalance = balances[msg.sender];
 
         // This is to check whether the deadline is passed and Remit Creator has taken the exchange amount back
-        require(userBalance > 0, "Remit Creator already claimed back");
+        require(userBalance > 0, "Remittance Completed/Claimed Back.");
 
         // As User receives fiat from Exchanger, User's balance is changed to zero
         // And Exchanger's balance is updated. Here we have updated considering that carol can be doing multiple exchanges as well
         remittances[hashValue].amount = 0;
-        balances[msg.sender] = exchangerBalance.add(userBalance);
+        balances[msg.sender] = balances[msg.sender].add(userBalance);
 
         emit Exchange(msg.sender, userBalance);
         return true;
@@ -92,7 +92,8 @@ contract Remittance is Stoppable{
         require(amount > 0, "Zero cant be withdrawn");
 
         uint balance = balances[msg.sender];
-        require(balance >= amount, "Withdraw amount requested higher than balance");
+        //require(balance >= amount, "Withdraw amount requested higher than balance");
+        // Commented because the next line will revert if amount is a value greater than balance
 
         balances[msg.sender] = balance.sub(amount);
 
@@ -110,12 +111,10 @@ contract Remittance is Stoppable{
 
         // This is to stop further checks if the exchange is already complete
         uint256 amount = remittances[hashValue].amount;
-        require(remittances[hashValue].amount > 0, "Exchange is already complete");
+        require(amount > 0, "Exchange is already complete");
 
         // The claim period should start
         require(remittances[hashValue].deadline < now, "Claim Period has not started yet");
-
-        require(amount > 0, "Zero can't be withdrawn");
 
         remittances[hashValue].amount = 0;
 

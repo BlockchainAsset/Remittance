@@ -49,7 +49,7 @@ contract('Remittance', (accounts) => {
     await truffleAssert.fails(
         remittanceInstance.encrypt(carolSecretBytes, {from: alice}),
       null,
-      'Invalid number of parameters for "encrypt". Got 1 expected 2!'
+      'invalid bytes32 value'
     );
   });
 
