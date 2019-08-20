@@ -1,7 +1,7 @@
 const Web3 = require('web3');
 const $ = require('jquery');
 const assert = require('assert');
-const BN = Web3.utils.BN;
+const { BN, fromWei } = web3.utils;
 const zero = new BN('0');
 
 require('file-loader?name=../index.html!../index.html');
@@ -24,16 +24,16 @@ const Remittance = truffleContract(remittanceJson);
 Remittance.setProvider(web3.currentProvider);
 
 async function updateBalance(remittance) {
-    const oWBalance = web3.utils.fromWei(await web3.eth.getBalance(owner));
-    const rWBalance = web3.utils.fromWei(await web3.eth.getBalance(remitCreator));
-    const eWBalance = web3.utils.fromWei(await web3.eth.getBalance(exchanger));
+    const oWBalance = fromWei(await web3.eth.getBalance(owner));
+    const rWBalance = fromWei(await web3.eth.getBalance(remitCreator));
+    const eWBalance = fromWei(await web3.eth.getBalance(exchanger));
 
     $('#oWBalance').html(owner+ '<br>'+ oWBalance.toString(10));
     $('#rWBalance').html(remitCreator+ '<br>'+ rWBalance.toString(10));
     $('#eWBalance').html(exchanger+ '<br>'+ eWBalance.toString(10));
 
-    const oCBalance = web3.utils.fromWei(await remittance.balances(owner));
-    const eCBalance = web3.utils.fromWei(await remittance.balances(exchanger));
+    const oCBalance = fromWei(await remittance.balances(owner));
+    const eCBalance = fromWei(await remittance.balances(exchanger));
 
     $('#oCBalance').html(oCBalance.toString(10));
     $('#eCBalance').html(eCBalance.toString(10));

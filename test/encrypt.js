@@ -35,22 +35,34 @@ contract('Remittance', (accounts) => {
 
   })
 
-  beforeEach(async function() {
+  beforeEach("Creating New Instance", async function() {
     remittanceInstance = await remittance.new({ from: owner});
   });
 
-  it('Should encrypt the values correctly', async () => {
-      let encryptBobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+  describe("Function: encrypt", function() {
 
-      assert.strictEqual(bobCarolSecret, encryptBobCarolSecret, "Hash Values don't match");
-  });
+    describe("Basic Working", function() {
 
-  it('Should only work if two words are given', async () => {
-    await truffleAssert.fails(
-        remittanceInstance.encrypt(carolSecretBytes, {from: alice}),
-      null,
-      'invalid bytes32 value'
-    );
+      it('Should encrypt the values correctly', async () => {
+        let encryptBobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+  
+        assert.strictEqual(bobCarolSecret, encryptBobCarolSecret, "Hash Values don't match");
+      });
+  
+    });
+
+    describe("Input Cases", function() {
+
+      it('Should only work if two words are given', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.encrypt(carolSecretBytes, {from: alice}),
+          null,
+          'invalid bytes32 value'
+        );
+      });
+        
+    });
+
   });
 
 });

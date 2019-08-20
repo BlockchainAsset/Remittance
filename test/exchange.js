@@ -35,99 +35,110 @@ contract('Remittance', (accounts) => {
 
   })
 
-  beforeEach(async function() {
+  beforeEach("Creating New Instance", async function() {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
     bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
-  it('Should exchange the amount correctly', async () => {
-    // Make transaction from alice account to remit function.
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+  describe("Function: exchange", function() {
 
-    // Get initial balance of Carol in the contract before the transaction is made.
-    let carolContractStartingBalance = new BN(await remittanceInstance.balances(carol));
+    describe("Basic Working", function() {
+      it('Should exchange the amount correctly', async () => {
+        // Make transaction from alice account to remit function.
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+    
+        // Get initial balance of Carol in the contract before the transaction is made.
+        let carolContractStartingBalance = new BN(await remittanceInstance.balances(carol));
+    
+        // Exchange amount from Bob to Carol
+        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+    
+        // Get the final balance of Carol in the contract after the transaction is made.
+        let carolContractEndingBalance = new BN(await remittanceInstance.balances(carol));
+    
+        // Check if the result is correct or not
+        assert.isTrue(carolContractEndingBalance.eq(amount.add(carolContractStartingBalance).sub(hundred)), "Amount wasn't correctly received by Carol");
+    
+      });
+    });
+    
+    describe("Edge Cases", function() {
+      it('Should only allow if Secret of Bob is Correct', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(fakeSecretBytes, carolSecretBytes, {from: carol}),
+          null,
+          // This is because as the hashValue is new, the exchanger address is checked initially which is set to default value 0
+          'Only that particular exchange can do this'
+        );
+      });
+    
+      it('Should only allow if Secret of Carol is Correct', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(bobSecretBytes, fakeSecretBytes, {from: carol}),
+          null,
+          // This is because as the hashValue is new, the exchanger address is checked initially which is set to default value 0
+          'Only that particular exchange can do this'
+        );
+      });
+    
+      it('Should only work if atleast 1 Wei is to be exchanged', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol}),
+          null,
+          'Remittance Completed/Claimed Back'
+        );
+      });
 
-    // Exchange amount from Bob to Carol
-    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
-
-    // Get the final balance of Carol in the contract after the transaction is made.
-    let carolContractEndingBalance = new BN(await remittanceInstance.balances(carol));
-
-    // Check if the result is correct or not
-    assert.isTrue(carolContractEndingBalance.eq(amount.add(carolContractStartingBalance).sub(hundred)), "Amount wasn't correctly received by Carol");
-
+      it('Should only allow Carol to exchange for Bob', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: owner}),
+          null,
+          'Only that particular exchange can do this'
+        );
+      });
+    });
+    
+    describe("Input Cases", function() {
+      it('Should only work if secret of Bob is given', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(carolSecretBytes, {from: carol}),
+          null,
+          'invalid bytes32'
+        );
+      });
+    
+      it('Should only work if secret of Carol is given', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.exchange(bobSecretBytes, {from: carol}),
+          null,
+          'invalid bytes32'
+        );
+      });
+    });
+    
+    describe("Event Cases", function() {
+      it("Should correctly emit the proper event: Remit", async () => {
+        const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        const exchangeReceipt = await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        const log = exchangeReceipt.logs[0];
+        const remittanceAddress = remitReceipt.logs[0].address;
+    
+        assert.strictEqual(exchangeReceipt.logs.length, 1);
+        assert.strictEqual(log.event, "Exchange");
+        assert.strictEqual(log.address, remittanceAddress);
+        assert.strictEqual(log.args.exchanger, carol);
+        assert.isTrue(log.args.value.eq(hundred));
+      });
+    });
+    
   });
-
-  it('Should only allow Carol to exchange for Bob', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: owner}),
-      null,
-      'Only that particular exchange can do this'
-    );
-  });
-
-  it('Should only allow if Secret of Bob is Correct', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(fakeSecretBytes, carolSecretBytes, {from: carol}),
-      null,
-      // This is because as the hashValue is new, the exchange address is checked initially which is set to default value 0x0
-      'Only that particular exchange can do this'
-    );
-  });
-
-  it('Should only allow if Secret of Carol is Correct', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(bobSecretBytes, fakeSecretBytes, {from: carol}),
-      null,
-      // This is because as the hashValue is new, the exchange address is checked initially which is set to default value 0x0
-      'Only that particular exchange can do this'
-    );
-  });
-
-  it('Should only work if atleast 1 Wei is to be exchanged', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol}),
-      null,
-      'Remittance Completed/Claimed Back'
-    );
-  });
-
-  it('Should only work if secret of Bob is given', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(carolSecretBytes, {from: carol}),
-      null,
-      'invalid bytes32'
-    );
-  });
-
-  it('Should only work if secret of Carol is given', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.exchange(bobSecretBytes, {from: carol}),
-      null,
-      'invalid bytes32'
-    );
-  });
-
-  it("Should correctly emit the proper event: Remit", async () => {
-    const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-    const exchangeReceipt = await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
-    const log = exchangeReceipt.logs[0];
-    const remittanceAddress = remitReceipt.logs[0].address;
-
-    assert.strictEqual(exchangeReceipt.logs.length, 1);
-    assert.strictEqual(log.event, "Exchange");
-    assert.strictEqual(log.address, remittanceAddress);
-    assert.strictEqual(log.args.exchanger, carol);
-    assert.isTrue(log.args.value.eq(hundred));
-  });
-
 });

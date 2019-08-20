@@ -35,68 +35,96 @@ contract('Remittance', (accounts) => {
 
   })
 
-  beforeEach(async function() {
+  beforeEach("Creating New Instance", async function() {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
     bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
-  it('Should withdraw the amount correctly', async () => {
-    // Make transaction from alice account to remit function.
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+  describe("Function: withdraw", function() {
 
-    // Exchange amount from bob to carol
-    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+    describe("Basic Working", function() {
 
-    // Get initial balance of the account before the transaction is made.
-    let carolStartingBalance = new BN(await web3.eth.getBalance(carol));
+      it('Should withdraw the amount correctly', async () => {
+        // Make transaction from alice account to remit function.
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+    
+        // Exchange amount from bob to carol
+        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+    
+        // Get initial balance of the account before the transaction is made.
+        let carolStartingBalance = new BN(await web3.eth.getBalance(carol));
+    
+        // Withdraw amount from carol
+        let carolWithdrawTxReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
+        let carolWithdrawGasUsed = new BN(carolWithdrawTxReceipt.receipt.gasUsed);
+        let carolWithdrawGasPrice = new BN((await web3.eth.getTransaction(carolWithdrawTxReceipt.tx)).gasPrice);
+    
+        // Get balance of carol after the transactions.
+        let carolEndingBalance = new BN(await web3.eth.getBalance(carol));
+    
+        let carolStartAmountGas = hundred.add(carolStartingBalance).sub(carolWithdrawGasUsed.mul(carolWithdrawGasPrice));
+    
+        // Check if the result is correct or not
+        assert.isTrue(carolEndingBalance.eq(carolStartAmountGas), "Amount wasn't correctly received by Carol");
+      });
+      
+    });
 
-    // Withdraw amount from carol
-    let carolWithdrawTxReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
-    let carolWithdrawGasUsed = new BN(carolWithdrawTxReceipt.receipt.gasUsed);
-    let carolWithdrawGasPrice = new BN((await web3.eth.getTransaction(carolWithdrawTxReceipt.tx)).gasPrice);
+    describe("Edge Cases", function() {
 
-    // Get balance of carol after the transactions.
-    let carolEndingBalance = new BN(await web3.eth.getBalance(carol));
+      it('Should only work if amount > 0', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.withdraw(zero, {from: carol}),
+          null,
+          'Zero cant be withdrawn'
+        );
+      })
+    
+      it('Should only work if balance > amount', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await remittanceInstance.withdraw(hundred, {from: carol}),
+        await truffleAssert.fails(
+          remittanceInstance.withdraw(hundred, {from: carol}),
+          null,
+          'SafeMath: subtraction overflow.'
+        );
+      })
+  
+    });
 
-    let carolStartAmountGas = hundred.add(carolStartingBalance).sub(carolWithdrawGasUsed.mul(carolWithdrawGasPrice));
+    describe("Input Cases", function() {
 
-    // Check if the result is correct or not
-    assert.isTrue(carolEndingBalance.eq(carolStartAmountGas), "Amount wasn't correctly received by Carol");
-  });
+      it('Should only work if amount is given', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.withdraw({from: carol}),
+          null,
+          'invalid number value'
+        );
+      })
 
-  it('Should only work if amount > 0', async () => {
-    await truffleAssert.fails(
-      remittanceInstance.withdraw(zero, {from: carol}),
-      null,
-      'Zero cant be withdrawn'
-    );
-  })
+    });
 
-  it('Should only work if balance > amount', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
-    await remittanceInstance.withdraw(hundred, {from: carol}),
-    await truffleAssert.fails(
-      remittanceInstance.withdraw(hundred, {from: carol}),
-      null,
-      'SafeMath: subtraction overflow.'
-    );
-  })
+    describe("Event Cases", function() {
+  
+      it("Should correctly emit the proper event: Transfered", async () => {
+        const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
+        const log = withdrawReceipt.logs[0];
+        const remittanceAddress = remitReceipt.logs[0].address;
+    
+        assert.strictEqual(withdrawReceipt.logs.length, 1);
+        assert.strictEqual(log.event, "Withdrawed");
+        assert.strictEqual(log.address, remittanceAddress);
+        assert.strictEqual(log.args.to, carol);
+        assert.isTrue(log.args.value.eq(hundred));
+      });  
+  
+    });
 
-  it("Should correctly emit the proper event: Transfered", async () => {
-    const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-    await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
-    const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
-    const log = withdrawReceipt.logs[0];
-    const remittanceAddress = remitReceipt.logs[0].address;
-
-    assert.strictEqual(withdrawReceipt.logs.length, 1);
-    assert.strictEqual(log.event, "Withdrawed");
-    assert.strictEqual(log.address, remittanceAddress);
-    assert.strictEqual(log.args.to, carol);
-    assert.isTrue(log.args.value.eq(hundred));
   });
 
 });

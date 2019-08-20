@@ -35,75 +35,95 @@ contract('Remittance', (accounts) => {
 
   })
 
-  beforeEach(async function() {
+  beforeEach("Creating New Instance", async function() {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
     bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
   });
 
-  it('Should remit the coin correctly', async () => {
-    // Make transaction from Alice to remit function.
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+  describe("Function: remit", function() {
 
-    // Get Balance of Bob After Transfer
-    let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
+    describe("Basic Working", function() {
 
-    // Check if the result is correct or not
-    assert.isTrue(bobContractEndingBalance.eq(amount.sub(hundred)), "Amount wasn't correctly received by Bob");
-  });
-
-  it('Remit should not be allowed with the same hashValue as any previous Remit', async () => {
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    await truffleAssert.fails(
-      remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount}),
-      null,
-      'The hashValue should be unique'
-    );
-
-  });
-
-  it('Owner should not take a cut if transferred value is less than 10K Wei', async () => {
+      it('Should remit the coin correctly', async () => {
+        // Make transaction from Alice to remit function.
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
     
-    await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-    let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
+        // Get Balance of Bob After Transfer
+        let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
+    
+        // Check if the result is correct or not
+        assert.isTrue(bobContractEndingBalance.eq(amount.sub(hundred)), "Amount wasn't correctly received by Bob");
+      });
+  
+    });
 
-    // Check if the result is correct or not
-    assert.isTrue(bobContractEndingBalance.eq(hundred), "Amount wasn't correctly received by Bob");
-  });
+    describe("Edge Cases", function() {
 
-  it('Should Only work if atleast 1 Wei is sent to remit', async () => {
-    await truffleAssert.fails(
-      remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: zero}),
-      null,
-      'Amount should be atleast 1 wei'
-    );
-  });
+      it('Remit should not be allowed with the same hashValue as any previous Remit', async () => {
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await truffleAssert.fails(
+          remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount}),
+          null,
+          'The hashValue should be unique'
+        );
+    
+      });
+    
+      it('Owner should not take a cut if transferred value is less than 10K Wei', async () => {
+        
+        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        let bobContractEndingBalance = (await remittanceInstance.remittances(bobCarolSecret)).amount;
+    
+        // Check if the result is correct or not
+        assert.isTrue(bobContractEndingBalance.eq(hundred), "Amount wasn't correctly received by Bob");
+      });
+    
+      it('Should Only work if atleast 1 Wei is sent to remit', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: zero}),
+          null,
+          'Amount should be atleast 1 wei'
+        );
+      });
+  
+    });
 
-  it('Should only work if Carol address is given', async () => {
-    await truffleAssert.fails(
-      remittanceInstance.remit(bobCarolSecret, time, {from: alice, value: amount}),
-      null,
-      'invalid address'
-    );
-  });
+    describe("Input Cases", function() {
 
-  it('Should Only work if Carol Address is valid', async () => {
-    await truffleAssert.fails(
-      remittanceInstance.remit(bobCarolSecret, zeroAdd, time, {from: alice, value: amount}),
-      null,
-      'Exchanger address should be a valid address'
-    );
-  });
+      it('Should only work if Carol address is given', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.remit(bobCarolSecret, time, {from: alice, value: amount}),
+          null,
+          'invalid address'
+        );
+      });
+    
+      it('Should Only work if Carol Address is valid', async () => {
+        await truffleAssert.fails(
+          remittanceInstance.remit(bobCarolSecret, zeroAdd, time, {from: alice, value: amount}),
+          null,
+          'Exchanger address should be a valid address'
+        );
+      });
+  
+    });
 
-  it("Should correctly emit the proper event: Remit", async () => {
-    const receipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-    const log = receipt.logs[0];
+    describe("Event Cases", function() {
+      
+      it("Should correctly emit the proper event: Remit", async () => {
+        const receipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        const log = receipt.logs[0];
+    
+        assert.strictEqual(receipt.logs.length, 1);
+        assert.strictEqual(log.event, "Remit");
+        assert.strictEqual(log.args.exchanger, carol);
+        assert.isTrue(log.args.value.eq(amount.sub(hundred)));
+      });  
+    
+    });
 
-    assert.strictEqual(receipt.logs.length, 1);
-    assert.strictEqual(log.event, "Remit");
-    assert.strictEqual(log.args.exchanger, carol);
-    assert.isTrue(log.args.value.eq(amount.sub(hundred)));
   });
 
 });
