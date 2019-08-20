@@ -39,7 +39,7 @@ contract('Remittance', (accounts) => {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
-    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   });
 
   describe("Function: remit", function() {

@@ -1,7 +1,7 @@
 const Web3 = require('web3');
 const $ = require('jquery');
 const assert = require('assert');
-const { BN, fromWei } = web3.utils;
+const { BN, fromWei } = Web3.utils;
 const zero = new BN('0');
 
 require('file-loader?name=../index.html!../index.html');
@@ -44,12 +44,11 @@ async function remit() {
         const remittance = await Remittance.deployed();
         const amount = web3.utils.toWei($('input[name="amount"]').val());
         const userPassword = Web3.utils.fromAscii($('input[name="userPassword"]').val());
-        const exchangerPassword = Web3.utils.fromAscii($('input[name="exchangerPassword"]').val());
         const exchangerAddress = $('input[name="exchangerAddress"]').val();
         const seconds = $('input[name="seconds"]').val();
         const hashValue = await remittance.encrypt(
             userPassword,
-            exchangerPassword,
+            exchangerAddress,
             {from: remitCreator}
         );
 
@@ -92,11 +91,9 @@ async function exchange() {
     try {
         const remittance = await Remittance.deployed();
         const userPassword = Web3.utils.fromAscii($('input[name="userPassword"]').val());
-        const exchangerPassword = Web3.utils.fromAscii($('input[name="exchangerPassword"]').val());
 
         const txObj = await remittance.exchange(
             userPassword,
-            exchangerPassword,
             { from: exchanger }
         ).on(
             'transactionHash',

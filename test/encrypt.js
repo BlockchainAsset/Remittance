@@ -1,4 +1,4 @@
-const { BN, fromAscii, toWei } = web3.utils;
+const { BN, fromAscii, toWei, soliditySha3 } = web3.utils;
 
 const remittance = artifacts.require("Remittance");
 
@@ -14,7 +14,6 @@ const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = fromAscii("bobSecret");
 const carolSecretBytes = fromAscii("carolSecret");
 const fakeSecretBytes = fromAscii("secret");
-const bobCarolSecret = web3.utils.keccak256(web3.eth.abi.encodeParameters(['bytes32', 'bytes32'],[bobSecretBytes,carolSecretBytes]))
 
 contract('Remittance', (accounts) => {
 
@@ -44,7 +43,8 @@ contract('Remittance', (accounts) => {
     describe("Basic Working", function() {
 
       it('Should encrypt the values correctly', async () => {
-        let encryptBobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+        let bobCarolSecret = soliditySha3({type: 'bytes32', value: bobSecretBytes}, {type: 'address', value: carol}, {type: 'address', value: remittanceInstance.address});
+        let encryptBobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   
         assert.strictEqual(bobCarolSecret, encryptBobCarolSecret, "Hash Values don't match");
       });
@@ -53,11 +53,11 @@ contract('Remittance', (accounts) => {
 
     describe("Input Cases", function() {
 
-      it('Should only work if two words are given', async () => {
+      it('Should only work if two inputs are given', async () => {
         await truffleAssert.fails(
           remittanceInstance.encrypt(carolSecretBytes, {from: alice}),
           null,
-          'invalid bytes32 value'
+          'invalid address'
         );
       });
         

@@ -43,7 +43,7 @@ contract('Remittance', (accounts) => {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
-    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   });
 
   describe("Function: claimBack", function() {
@@ -87,7 +87,7 @@ contract('Remittance', (accounts) => {
     
       it('Should only allow to claim back if the exchange is not done yet', async () => {
         await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
-        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         await truffleAssert.fails(
           remittanceInstance.claimBack(bobCarolSecret, {from: alice}),
           null,
@@ -106,7 +106,7 @@ contract('Remittance', (accounts) => {
     
       it('Should only allow if Hash Value is Correct', async () => {
         await remittanceInstance.remit(bobCarolSecret, carol, shortTime, {from: alice, value: amount});
-        fakeSecret = await remittanceInstance.encrypt(fakeSecretBytes, carolSecretBytes, {from: alice});
+        fakeSecret = await remittanceInstance.encrypt(fakeSecretBytes, carol, {from: alice});
         await truffleAssert.fails(
           remittanceInstance.claimBack(fakeSecret, {from: alice}),
           null,

@@ -8,7 +8,6 @@ contract Remittance is Stoppable{
 
     struct RemitDetails {
         uint256 amount; // For storing the amount of Remit
-        address exchange; // To store the particular exchange address
         address remitCreator; // To store the remit initiator's address
         uint256 deadline; // To store in seconds from the current time for the claim back to start
     }
@@ -27,8 +26,8 @@ contract Remittance is Stoppable{
     constructor(bool initialRunState) public Stoppable(initialRunState){
     }
 
-    function encrypt(bytes32 userSecret, bytes32 exchangerSecret) public pure returns(bytes32 password){
-        return keccak256(abi.encodePacked(userSecret, exchangerSecret));
+    function encrypt(bytes32 userSecret, address exchangerAddress) public view returns(bytes32 password){
+        return keccak256(abi.encodePacked(userSecret, exchangerAddress, address(this)));
     }
 
     function remit(bytes32 hashValue, address exchangerAddress, uint256 second) public onlyIfRunning payable returns(bool status){
@@ -37,7 +36,7 @@ contract Remittance is Stoppable{
         require(exchangerAddress != address(0), "Exchanger address should be a valid address");
 
         // The hashValue should be unique
-        require(remittances[hashValue].exchange == address(0), "The hashValue should be unique");
+        require(remittances[hashValue].remitCreator == address(0), "The hashValue should be unique");
 
         // To decrease the gas used
         uint msgValue = msg.value;
@@ -54,7 +53,6 @@ contract Remittance is Stoppable{
 
         // Details of Bob is updated
         remittances[hashValue].amount = msgValue;
-        remittances[hashValue].exchange = exchangerAddress;
         remittances[hashValue].remitCreator = msg.sender;
         remittances[hashValue].deadline = now.add(second);
 
@@ -64,13 +62,9 @@ contract Remittance is Stoppable{
 
     }
 
-    function exchange(bytes32 userSecret, bytes32 exchangerSecret) public onlyIfRunning returns(bool status){
+    function exchange(bytes32 userSecret) public onlyIfRunning returns(bool status){
 
-        bytes32 hashValue = encrypt(userSecret, exchangerSecret);
-
-        // As User does not want to do anything with Ether, I am making Exchanger to do the transfer
-        // And only Exchanger should be allowed to do this transfer
-        require(remittances[hashValue].exchange == msg.sender, "Only that particular exchange can do this");
+        bytes32 hashValue = encrypt(userSecret, msg.sender);
 
         uint userBalance = remittances[hashValue].amount;
 

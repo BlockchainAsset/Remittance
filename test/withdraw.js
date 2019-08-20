@@ -39,7 +39,7 @@ contract('Remittance', (accounts) => {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
-    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carolSecretBytes, {from: alice});
+    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   });
 
   describe("Function: withdraw", function() {
@@ -51,7 +51,7 @@ contract('Remittance', (accounts) => {
         await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
     
         // Exchange amount from bob to carol
-        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await remittanceInstance.exchange(bobSecretBytes, {from: carol});
     
         // Get initial balance of the account before the transaction is made.
         let carolStartingBalance = new BN(await web3.eth.getBalance(carol));
@@ -84,7 +84,7 @@ contract('Remittance', (accounts) => {
     
       it('Should only work if balance > amount', async () => {
         await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         await remittanceInstance.withdraw(hundred, {from: carol}),
         await truffleAssert.fails(
           remittanceInstance.withdraw(hundred, {from: carol}),
@@ -111,7 +111,7 @@ contract('Remittance', (accounts) => {
   
       it("Should correctly emit the proper event: Transfered", async () => {
         const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
-        await remittanceInstance.exchange(bobSecretBytes, carolSecretBytes, {from: carol});
+        await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
         const log = withdrawReceipt.logs[0];
         const remittanceAddress = remitReceipt.logs[0].address;
