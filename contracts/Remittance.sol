@@ -12,8 +12,8 @@ contract Remittance is Stoppable{
         uint256 deadline; // To store in seconds from the current time for the claim back to start
     }
 
-    uint256 public feeThreshold = 10000; // Fee would be taken once the remittance is valued more than 10K wei
-    uint256 public fee = 100; // Fee for each remittance valued more than 10K wei
+    uint256 public feeThreshold; // Fee would be taken once the remittance is valued more than 10K wei
+    uint256 public fee; // Fee for each remittance valued more than 10K wei
 
     mapping (address => uint256) public balances; // To store the contract owner & exchange owner balance
     mapping (bytes32 => RemitDetails) public remittances;
@@ -24,6 +24,8 @@ contract Remittance is Stoppable{
     event ClaimBack(bytes32 indexed hashValue, address indexed remitCreator, uint256 value);
 
     constructor(bool initialRunState) public Stoppable(initialRunState){
+        feeThreshold = 10000;
+        fee = 100;
     }
 
     function encrypt(bytes32 userSecret, address exchangerAddress) public view returns(bytes32 password){

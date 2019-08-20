@@ -42,7 +42,15 @@ Since they each have only half of the puzzle, Bob & Carol need to meet in person
 
 4. Now, in your browser, open [http://127.0.0.1:8080](http://127.0.0.1:8080) or the address shown to you in your console.
 
-**NOTE**: If you are using `ganache-cli` for blockchain, please disable MetaMask for checking this project.
+**NOTE**: If you are using `ganache-cli` for blockchain, please disable MetaMask for checking this project in browser.
+
+## How to Test the Contract
+
+1. Please follow the step 1 - 2 of *How to Run the Project*.
+
+2. Now start the test using:
+
+`npm test`
 
 ## Note
 
