@@ -18,7 +18,7 @@ contract Remittance is Stoppable{
     mapping (address => uint256) public balances; // To store the contract owner & exchange owner balance
     mapping (bytes32 => RemitDetails) public remittances;
 
-    event Remit(address indexed exchanger, uint256 value);
+    event Remit(bytes32 indexed hashValue, address indexed remitCreator, uint256 value);
     event Withdrawed(address indexed to, uint256 value);
     event Exchange(bytes32 indexed hashValue, address indexed exchanger, uint256 value);
     event ClaimBack(bytes32 indexed hashValue, address indexed remitCreator, uint256 value);
@@ -29,13 +29,13 @@ contract Remittance is Stoppable{
     }
 
     function encrypt(bytes32 userSecret, address exchangerAddress) public view returns(bytes32 password){
+
+        require(exchangerAddress != address(0), "Exchanger address should be a valid address");
         return keccak256(abi.encodePacked(userSecret, exchangerAddress, address(this)));
+
     }
 
-    function remit(bytes32 hashValue, address exchangerAddress, uint256 second) public onlyIfRunning payable returns(bool status){
-
-        // Address should be valid
-        require(exchangerAddress != address(0), "Exchanger address should be a valid address");
+    function remit(bytes32 hashValue, uint256 second) public onlyIfRunning payable returns(bool status){
 
         // The hashValue should be unique
         require(remittances[hashValue].remitCreator == address(0), "The hashValue should be unique");
@@ -58,7 +58,7 @@ contract Remittance is Stoppable{
         remittances[hashValue].remitCreator = msg.sender;
         remittances[hashValue].deadline = now.add(second);
 
-        emit Remit(exchangerAddress, msgValue);
+        emit Remit(hashValue, msg.sender, msgValue);
 
         return true;
 

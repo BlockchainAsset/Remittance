@@ -56,7 +56,6 @@ async function remit() {
 
         const txObj = await remittance.remit(
             hashValue,
-            exchangerAddress,
             seconds,
             { from: remitCreator, value: amount }
         ).on(

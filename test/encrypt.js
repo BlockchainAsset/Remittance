@@ -4,16 +4,8 @@ const remittance = artifacts.require("Remittance");
 
 const truffleAssert = require('truffle-assertions');
 
-const amount = new BN(toWei('1')); // <-- Change ETH value to be tested here
-const zero = new BN('0');
-const hundred = new BN('100');
-const time = 3600 // Around an hour
-const shortTime = 1 // Just a second
 const twoEtherInWei = new BN(toWei("2"));
-const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = fromAscii("bobSecret");
-const carolSecretBytes = fromAscii("carolSecret");
-const fakeSecretBytes = fromAscii("secret");
 
 contract('Remittance', (accounts) => {
 
@@ -43,10 +35,10 @@ contract('Remittance', (accounts) => {
     describe("Basic Working", function() {
 
       it('Should encrypt the values correctly', async () => {
-        let bobCarolSecret = soliditySha3({type: 'bytes32', value: bobSecretBytes}, {type: 'address', value: carol}, {type: 'address', value: remittanceInstance.address});
-        let encryptBobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
+        let bobCarolHash = soliditySha3({type: 'bytes32', value: bobSecretBytes}, {type: 'address', value: carol}, {type: 'address', value: remittanceInstance.address});
+        let encryptBobCarolHash = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   
-        assert.strictEqual(bobCarolSecret, encryptBobCarolSecret, "Hash Values don't match");
+        assert.strictEqual(bobCarolHash, encryptBobCarolHash, "Hash Values don't match");
       });
   
     });
@@ -55,7 +47,7 @@ contract('Remittance', (accounts) => {
 
       it('Should only work if two inputs are given', async () => {
         await truffleAssert.fails(
-          remittanceInstance.encrypt(carolSecretBytes, {from: alice}),
+          remittanceInstance.encrypt(carol, {from: alice}),
           null,
           'invalid address'
         );

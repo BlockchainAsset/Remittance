@@ -8,18 +8,14 @@ const amount = new BN(toWei('1')); // <-- Change ETH value to be tested here
 const zero = new BN('0');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
-const shortTime = 1 // Just a second
 const twoEtherInWei = new BN(toWei("2"));
-const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = fromAscii("bobSecret");
-const carolSecretBytes = fromAscii("carolSecret");
-const fakeSecretBytes = fromAscii("secret");
 
 contract('Remittance', (accounts) => {
 
   let remittanceInstance;
   let owner, alice, bob, carol;
-  let bobCarolSecret;
+  let bobCarolHash;
 
   before("Preparing Accounts and Initial Checks", async function() {
     assert.isAtLeast(accounts.length, 4, "Atleast four accounts required");
@@ -39,7 +35,7 @@ contract('Remittance', (accounts) => {
     remittanceInstance = await remittance.new({ from: owner});
 
     // Get the hashValue first
-    bobCarolSecret = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
+    bobCarolHash = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   });
 
   describe("Function: withdraw", function() {
@@ -48,26 +44,26 @@ contract('Remittance', (accounts) => {
 
       it('Should withdraw the amount correctly', async () => {
         // Make transaction from alice account to remit function.
-        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: amount});
+        await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: amount});
     
         // Exchange amount from bob to carol
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
     
         // Get initial balance of the account before the transaction is made.
-        let carolStartingBalance = new BN(await web3.eth.getBalance(carol));
+        let startingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
     
         // Withdraw amount from carol
-        let carolWithdrawTxReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
-        let carolWithdrawGasUsed = new BN(carolWithdrawTxReceipt.receipt.gasUsed);
-        let carolWithdrawGasPrice = new BN((await web3.eth.getTransaction(carolWithdrawTxReceipt.tx)).gasPrice);
+        let txReceiptOfWithdraw = await remittanceInstance.withdraw(hundred, {from: carol});
+        let gasUsedInWithdraw = new BN(txReceiptOfWithdraw.receipt.gasUsed);
+        let gasPriceInWithdraw = new BN((await web3.eth.getTransaction(txReceiptOfWithdraw.tx)).gasPrice);
     
         // Get balance of carol after the transactions.
-        let carolEndingBalance = new BN(await web3.eth.getBalance(carol));
+        let endingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
     
-        let carolStartAmountGas = hundred.add(carolStartingBalance).sub(carolWithdrawGasUsed.mul(carolWithdrawGasPrice));
+        let carolStartAmountGas = startingBalanceOfCarol.add(hundred).sub(gasUsedInWithdraw.mul(gasPriceInWithdraw));
     
         // Check if the result is correct or not
-        assert.isTrue(carolEndingBalance.eq(carolStartAmountGas), "Amount wasn't correctly received by Carol");
+        assert.isTrue(endingBalanceOfCarol.eq(carolStartAmountGas), "Amount wasn't correctly received by Carol");
       });
       
     });
@@ -83,7 +79,7 @@ contract('Remittance', (accounts) => {
       })
     
       it('Should only work if balance > amount', async () => {
-        await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: hundred});
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         await remittanceInstance.withdraw(hundred, {from: carol}),
         await truffleAssert.fails(
@@ -110,7 +106,7 @@ contract('Remittance', (accounts) => {
     describe("Event Cases", function() {
   
       it("Should correctly emit the proper event: Transfered", async () => {
-        const remitReceipt = await remittanceInstance.remit(bobCarolSecret, carol, time, {from: alice, value: hundred});
+        const remitReceipt = await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: hundred});
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
         const log = withdrawReceipt.logs[0];
