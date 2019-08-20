@@ -138,6 +138,7 @@ contract('Remittance', (accounts) => {
         assert.strictEqual(claimBackReceipt.logs.length, 1);
         assert.strictEqual(log.event, "ClaimBack");
         assert.strictEqual(log.address, remittanceAddress);
+        assert.strictEqual(log.args.hashValue, bobCarolSecret);
         assert.strictEqual(log.args.remitCreator, alice);
         assert.isTrue(log.args.value.eq(hundred));
       });

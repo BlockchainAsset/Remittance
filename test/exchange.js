@@ -135,6 +135,7 @@ contract('Remittance', (accounts) => {
         assert.strictEqual(exchangeReceipt.logs.length, 1);
         assert.strictEqual(log.event, "Exchange");
         assert.strictEqual(log.address, remittanceAddress);
+        assert.strictEqual(log.args.hashValue, bobCarolSecret);
         assert.strictEqual(log.args.exchanger, carol);
         assert.isTrue(log.args.value.eq(hundred));
       });

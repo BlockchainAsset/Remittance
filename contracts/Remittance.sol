@@ -21,8 +21,8 @@ contract Remittance is Stoppable{
 
     event Remit(address indexed exchanger, uint256 value);
     event Withdrawed(address indexed to, uint256 value);
-    event Exchange(address indexed exchanger, uint256 value);
-    event ClaimBack(address indexed remitCreator, uint256 value);
+    event Exchange(bytes32 indexed hashValue, address indexed exchanger, uint256 value);
+    event ClaimBack(bytes32 indexed hashValue, address indexed remitCreator, uint256 value);
 
     constructor(bool initialRunState) public Stoppable(initialRunState){
     }
@@ -82,7 +82,7 @@ contract Remittance is Stoppable{
         remittances[hashValue].amount = 0;
         balances[msg.sender] = balances[msg.sender].add(userBalance);
 
-        emit Exchange(msg.sender, userBalance);
+        emit Exchange(hashValue, msg.sender, userBalance);
         return true;
 
     }
@@ -118,7 +118,7 @@ contract Remittance is Stoppable{
 
         remittances[hashValue].amount = 0;
 
-        emit ClaimBack(msg.sender, amount);
+        emit ClaimBack(hashValue, msg.sender, amount);
 
         msg.sender.transfer(amount);
         return true;
