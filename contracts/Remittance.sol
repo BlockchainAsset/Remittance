@@ -76,6 +76,7 @@ contract Remittance is Stoppable{
         // As User receives fiat from Exchanger, User's balance is changed to zero
         // And Exchanger's balance is updated. Here we have updated considering that carol can be doing multiple exchanges as well
         remittances[hashValue].amount = 0;
+        remittances[hashValue].deadline = 0; // To shrink the data use
         balances[msg.sender] = balances[msg.sender].add(userBalance);
 
         emit Exchange(hashValue, msg.sender, userBalance);

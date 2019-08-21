@@ -35,8 +35,8 @@ contract('Remittance', (accounts) => {
     describe("Basic Working", function() {
 
       it('Should encrypt the values correctly', async () => {
-        let bobCarolHash = soliditySha3({type: 'bytes32', value: bobSecretBytes}, {type: 'address', value: carol}, {type: 'address', value: remittanceInstance.address});
-        let encryptBobCarolHash = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
+        const bobCarolHash = soliditySha3({type: 'bytes32', value: bobSecretBytes}, {type: 'address', value: carol}, {type: 'address', value: remittanceInstance.address});
+        const encryptBobCarolHash = await remittanceInstance.encrypt(bobSecretBytes, carol, {from: alice});
   
         assert.strictEqual(bobCarolHash, encryptBobCarolHash, "Hash Values don't match");
       });

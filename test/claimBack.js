@@ -54,20 +54,20 @@ contract('Remittance', (accounts) => {
         await wait(2000);
     
         // Get initial balance of Alice before the transaction is made.
-        let startingBalanceOfAlice = new BN(await web3.eth.getBalance(alice));
+        const startingBalanceOfAlice = new BN(await web3.eth.getBalance(alice));
     
         // Claim Back amount from Bob
-        let txReceiptOfClaimBack = await remittanceInstance.claimBack(bobCarolHash, {from: alice});
-        let gasUsedInClaimBack = new BN(txReceiptOfClaimBack.receipt.gasUsed);
-        let gasPriceInClaimBack = new BN((await web3.eth.getTransaction(txReceiptOfClaimBack.tx)).gasPrice);
+        const txReceiptOfClaimBack = await remittanceInstance.claimBack(bobCarolHash, {from: alice});
+        const gasUsedInClaimBack = new BN(txReceiptOfClaimBack.receipt.gasUsed);
+        const gasPriceInClaimBack = new BN((await web3.eth.getTransaction(txReceiptOfClaimBack.tx)).gasPrice);
     
         // Get final balance of Alice before the transaction is made.
-        let endingBalanceOfAlice = new BN(await web3.eth.getBalance(alice));
+        const endingBalanceOfAlice = new BN(await web3.eth.getBalance(alice));
     
-        let total = startingBalanceOfAlice.add(amount).sub(hundred).sub(gasUsedInClaimBack.mul(gasPriceInClaimBack));
+        const total = startingBalanceOfAlice.add(amount).sub(hundred).sub(gasUsedInClaimBack.mul(gasPriceInClaimBack));
     
         // Check if the result is correct or not
-        assert.isTrue(endingBalanceOfAlice.eq(total), "Amount wasn't correctly received by Alice");
+        assert.strictEqual(endingBalanceOfAlice.toString(10),total.toString(10), "Amount wasn't correctly received by Alice");
     
       });
     });
@@ -129,15 +129,16 @@ contract('Remittance', (accounts) => {
         const remitReceipt = await remittanceInstance.remit(bobCarolHash, shortTime, {from: alice, value: hundred});
         await wait(2000);
         const claimBackReceipt = await remittanceInstance.claimBack(bobCarolHash, {from: alice});
+
+        assert.strictEqual(claimBackReceipt.logs.length, 1);
         const log = claimBackReceipt.logs[0];
         const remittanceAddress = remitReceipt.logs[0].address;
     
-        assert.strictEqual(claimBackReceipt.logs.length, 1);
         assert.strictEqual(log.event, "ClaimBack");
         assert.strictEqual(log.address, remittanceAddress);
         assert.strictEqual(log.args.hashValue, bobCarolHash);
         assert.strictEqual(log.args.remitCreator, alice);
-        assert.isTrue(log.args.value.eq(hundred));
+        assert.strictEqual(log.args.value.toString(10),hundred.toString(10));
       });
     });
     

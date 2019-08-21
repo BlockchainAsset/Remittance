@@ -50,20 +50,20 @@ contract('Remittance', (accounts) => {
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
     
         // Get initial balance of the account before the transaction is made.
-        let startingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
+        const startingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
     
         // Withdraw amount from carol
-        let txReceiptOfWithdraw = await remittanceInstance.withdraw(hundred, {from: carol});
-        let gasUsedInWithdraw = new BN(txReceiptOfWithdraw.receipt.gasUsed);
-        let gasPriceInWithdraw = new BN((await web3.eth.getTransaction(txReceiptOfWithdraw.tx)).gasPrice);
+        const txReceiptOfWithdraw = await remittanceInstance.withdraw(hundred, {from: carol});
+        const gasUsedInWithdraw = new BN(txReceiptOfWithdraw.receipt.gasUsed);
+        const gasPriceInWithdraw = new BN((await web3.eth.getTransaction(txReceiptOfWithdraw.tx)).gasPrice);
     
         // Get balance of carol after the transactions.
-        let endingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
+        const endingBalanceOfCarol = new BN(await web3.eth.getBalance(carol));
     
-        let carolStartAmountGas = startingBalanceOfCarol.add(hundred).sub(gasUsedInWithdraw.mul(gasPriceInWithdraw));
+        const carolStartAmountGas = startingBalanceOfCarol.add(hundred).sub(gasUsedInWithdraw.mul(gasPriceInWithdraw));
     
         // Check if the result is correct or not
-        assert.isTrue(endingBalanceOfCarol.eq(carolStartAmountGas), "Amount wasn't correctly received by Carol");
+        assert.strictEqual(endingBalanceOfCarol.toString(10),carolStartAmountGas.toString(10), "Amount wasn't correctly received by Carol");
       });
       
     });
@@ -109,15 +109,16 @@ contract('Remittance', (accounts) => {
         const remitReceipt = await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: hundred});
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
         const withdrawReceipt = await remittanceInstance.withdraw(hundred, {from: carol});
+
+        assert.strictEqual(withdrawReceipt.logs.length, 1);
         const log = withdrawReceipt.logs[0];
         const remittanceAddress = remitReceipt.logs[0].address;
     
-        assert.strictEqual(withdrawReceipt.logs.length, 1);
         assert.strictEqual(log.event, "Withdrawed");
         assert.strictEqual(log.address, remittanceAddress);
         assert.strictEqual(log.args.to, carol);
-        assert.isTrue(log.args.value.eq(hundred));
-      });  
+        assert.strictEqual(log.args.value.toString(10),hundred.toString(10));
+      });
   
     });
 

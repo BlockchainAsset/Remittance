@@ -46,16 +46,16 @@ contract('Remittance', (accounts) => {
         await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: amount});
     
         // Get initial balance of Carol in the contract before the transaction is made.
-        let contractStartingBalanceOfCarol = new BN(await remittanceInstance.balances(carol));
+        const contractStartingBalanceOfCarol = new BN(await remittanceInstance.balances(carol));
     
         // Exchange amount from Bob to Carol
         await remittanceInstance.exchange(bobSecretBytes, {from: carol});
     
         // Get the final balance of Carol in the contract after the transaction is made.
-        let  contractEndingBalanceOfCarol = new BN(await remittanceInstance.balances(carol));
+        const contractEndingBalanceOfCarol = new BN(await remittanceInstance.balances(carol));
     
         // Check if the result is correct or not
-        assert.isTrue( contractEndingBalanceOfCarol.eq(contractStartingBalanceOfCarol.add(amount).sub(hundred)), "Amount wasn't correctly received by Carol");
+        assert.strictEqual(contractEndingBalanceOfCarol.toString(10),(contractStartingBalanceOfCarol.add(amount).sub(hundred)).toString(10), "Amount wasn't correctly received by Carol");
     
       });
     });
@@ -107,15 +107,16 @@ contract('Remittance', (accounts) => {
       it("Should correctly emit the proper event: Remit", async () => {
         const remitReceipt = await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: hundred});
         const exchangeReceipt = await remittanceInstance.exchange(bobSecretBytes, {from: carol});
+
+        assert.strictEqual(exchangeReceipt.logs.length, 1);
         const log = exchangeReceipt.logs[0];
         const remittanceAddress = remitReceipt.logs[0].address;
     
-        assert.strictEqual(exchangeReceipt.logs.length, 1);
         assert.strictEqual(log.event, "Exchange");
         assert.strictEqual(log.address, remittanceAddress);
         assert.strictEqual(log.args.hashValue, bobCarolHash);
         assert.strictEqual(log.args.exchanger, carol);
-        assert.isTrue(log.args.value.eq(hundred));
+        assert.strictEqual(log.args.value.toString(10),hundred.toString(10));
       });
     });
     

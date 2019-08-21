@@ -1,8 +1,7 @@
 const Web3 = require('web3');
 const $ = require('jquery');
 const assert = require('assert');
-const { BN, fromWei } = Web3.utils;
-const zero = new BN('0');
+const { toWei, fromAscii, fromWei } = Web3.utils;
 
 require('file-loader?name=../index.html!../index.html');
 
@@ -42,10 +41,17 @@ async function updateBalance(remittance) {
 async function remit() {
     try {
         const remittance = await Remittance.deployed();
-        const amount = web3.utils.toWei($('input[name="amount"]').val());
-        const userPassword = Web3.utils.fromAscii($('input[name="userPassword"]').val());
+        const amount = toWei($('input[name="amount"]').val());
+        const userPassword = fromAscii($('input[name="userPassword"]').val());
         const exchangerAddress = $('input[name="exchangerAddress"]').val();
         const seconds = $('input[name="seconds"]').val();
+
+        assert(await remittance.encrypt.call(
+            userPassword,
+            exchangerAddress,
+            {from: remitCreator}
+        ), 'The transaction will fail anyway, not sending');
+
         const hashValue = await remittance.encrypt(
             userPassword,
             exchangerAddress,
@@ -53,6 +59,12 @@ async function remit() {
         );
 
         $('#remitHashValue').html('Keep it safely: '+hashValue);
+
+        assert(await remittance.remit.call(
+            hashValue,
+            seconds,
+            { from: remitCreator, value: amount }
+        ), 'The transaction will fail anyway, not sending');
 
         const txObj = await remittance.remit(
             hashValue,
@@ -89,7 +101,7 @@ async function remit() {
 async function exchange() {
     try {
         const remittance = await Remittance.deployed();
-        const userPassword = Web3.utils.fromAscii($('input[name="userPassword"]').val());
+        const userPassword = fromAscii($('input[name="userPassword"]').val());
 
         const txObj = await remittance.exchange(
             userPassword,
@@ -125,7 +137,7 @@ async function exchange() {
 async function withdraw() {
     try {
         const remittance = await Remittance.deployed();
-        const amount = web3.utils.toWei($('input[name="wAmount"]').val());
+        const amount = toWei($('input[name="wAmount"]').val());
         var who = $('input[name="wPerson"]').val();
 
         if (who == '1'){

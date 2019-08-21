@@ -9,7 +9,6 @@ const zero = new BN('0');
 const hundred = new BN('100');
 const time = 3600 // Around an hour
 const twoEtherInWei = new BN(toWei("2"));
-const zeroAdd = "0x0000000000000000000000000000000000000000";
 const bobSecretBytes = fromAscii("bobSecret");
 
 contract('Remittance', (accounts) => {
@@ -48,10 +47,10 @@ contract('Remittance', (accounts) => {
         await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: amount});
     
         // Get Balance of Bob After Transfer
-        let contractEndingBalanceOfBob = (await remittanceInstance.remittances(bobCarolHash)).amount;
+        const contractEndingBalanceOfBob = (await remittanceInstance.remittances(bobCarolHash)).amount;
     
         // Check if the result is correct or not
-        assert.isTrue(contractEndingBalanceOfBob.eq(amount.sub(hundred)), "Amount wasn't correctly received by Bob");
+        assert.strictEqual(contractEndingBalanceOfBob.toString(10),(amount.sub(hundred)).toString(10), "Amount wasn't correctly received by Bob");
       });
   
     });
@@ -111,13 +110,14 @@ contract('Remittance', (accounts) => {
       
       it("Should correctly emit the proper event: Remit", async () => {
         const receipt = await remittanceInstance.remit(bobCarolHash, time, {from: alice, value: amount});
+
+        assert.strictEqual(receipt.logs.length, 1);
         const log = receipt.logs[0];
     
-        assert.strictEqual(receipt.logs.length, 1);
         assert.strictEqual(log.event, "Remit");
         assert.strictEqual(log.args.hashValue, bobCarolHash);
         assert.strictEqual(log.args.remitCreator, alice);
-        assert.isTrue(log.args.value.eq(amount.sub(hundred)));
+        assert.strictEqual(log.args.value.toString(10),(amount.sub(hundred)).toString(10));
       });  
     
     });
