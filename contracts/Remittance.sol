@@ -114,6 +114,7 @@ contract Remittance is Stoppable{
         require(remittances[hashValue].deadline < now, "Claim Period has not started yet");
 
         remittances[hashValue].amount = 0;
+        remittances[hashValue].deadline = 0; // To shrink the data use
 
         emit ClaimBack(hashValue, msg.sender, amount);
 
