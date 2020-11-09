@@ -21,7 +21,7 @@
     "file-loader": "^4.0.0",
     "truffle": "^5.0.8",
     "webpack": "^4.38.0",
-    "webpack-cli": "^3.3.6"
+    "webpack-cli": "^4.2.0"
   },
   "scripts": {
     "start": "bash startGanache.sh && ./node_modules/.bin/truffle migrate --reset && ./node_modules/.bin/webpack-cli --mode development && http-server ./build/app -a 0.0.0.0 -c-1",
