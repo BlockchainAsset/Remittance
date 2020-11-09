@@ -8,11 +8,11 @@
   },
   "dependencies": {
     "ganache-cli": "^6.5.1",
-    "http-server": "^0.11.1",
+    "http-server": "^0.12.3",
     "husky": "^4.3.0",
-    "jquery": "3.5.0",
+    "jquery": "3.5.1",
     "truffle-assertions": "^0.9.1",
-    "truffle-contract": "4.0.23",
+    "truffle-contract": "4.0.31",
     "web3": "^1.2.1"
   },
   "devDependencies": {
@@ -21,7 +21,7 @@
     "file-loader": "^4.0.0",
     "truffle": "^5.0.8",
     "webpack": "^4.38.0",
-    "webpack-cli": "^3.3.6"
+    "webpack-cli": "^4.2.0"
   },
   "scripts": {
     "start": "bash startGanache.sh && ./node_modules/.bin/truffle migrate --reset && ./node_modules/.bin/webpack-cli --mode development && http-server ./build/app -a 0.0.0.0 -c-1",
