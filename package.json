@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "ganache-cli": "^6.5.1",
-    "http-server": "^13.0.1",
+    "http-server": "^14.1.0",
     "husky": "^7.0.1",
     "jquery": "3.6.0",
     "truffle-assertions": "^0.9.1",
