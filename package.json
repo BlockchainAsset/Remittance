@@ -10,7 +10,7 @@
     "ganache-cli": "^6.5.1",
     "http-server": "^14.1.0",
     "husky": "^8.0.0",
-    "jquery": "3.6.4",
+    "jquery": "3.7.0",
     "truffle-assertions": "^0.9.1",
     "truffle-contract": "4.0.31",
     "web3": "^1.2.1"
