@@ -13,7 +13,7 @@
     "jquery": "3.7.0",
     "truffle-assertions": "^0.9.1",
     "truffle-contract": "4.0.31",
-    "web3": "^1.2.1"
+    "web3": "^4.0.1"
   },
   "devDependencies": {
     "chai": "4.3.7",
