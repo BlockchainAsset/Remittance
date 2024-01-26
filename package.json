@@ -9,7 +9,7 @@
   "dependencies": {
     "ganache-cli": "^6.5.1",
     "http-server": "^14.1.0",
-    "husky": "^8.0.0",
+    "husky": "^9.0.6",
     "jquery": "3.7.1",
     "truffle-assertions": "^0.9.1",
     "truffle-contract": "4.0.31",
